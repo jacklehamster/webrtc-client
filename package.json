@@ -1,25 +1,15 @@
 {
-  "name": "bun-template",
+  "name": "@dobuki/webrtc-client",
   "module": "src/index.ts",
-  "description": "Bun template for creating projects using bunjs",
-  "version": "1.0.66",
-  "keywords": [
-    "bun",
-    "bunjs",
-    "typescript",
-    "template",
-    "npm",
-    "np",
-    "publish",
-    "git"
-  ],
+  "description": "Wrapper for connecting WebRTC clients.",
+  "version": "1.0.0",
+  "keywords": [],
   "repository": {
     "type": "git",
-    "url": "git@github.com:jacklehamster/bun-template.git"
+    "url": "https://github.com/jacklehamster/webrtc-client.git"
   },
-  "homepage": "https://jacklehamster.github.io/bun-template/",
   "author": {
-    "name": "Jack Le Hamster",
+    "name": "Vincent Le Quang",
     "email": "jacklehamster@gmail.com"
   },
   "license": "MIT",
@@ -45,6 +35,12 @@
     "dist"
   ],
   "devDependencies": {
-    "@dobuki/dev-dependencies": "latest"
+    "@dobuki/dev-dependencies": "latest",
+    "@types/qrcode": "^1.5.5"
+  },
+  "dependencies": {
+    "@dobuki/firebase-store": "^1.0.16",
+    "napl": "^1.0.76",
+    "qrcode": "^1.5.4"
   }
 }

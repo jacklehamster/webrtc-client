@@ -1,5 +1,4 @@
-export class Hello {
-  static hello() {
-    return "Hello World!";
-  }
-}
+/// <reference lib="dom" />
+/// <reference lib="dom.iterable" />
+
+export * from "./Connector";

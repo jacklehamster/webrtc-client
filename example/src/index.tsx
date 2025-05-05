@@ -2,24 +2,59 @@
 /// <reference lib="dom" />
 /// <reference lib="dom.iterable" />
 
-import React from "react";
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import { Hello } from "bun-template";
+import { firebaseWrappedServer } from "@dobuki/firebase-store";
+import { Connector } from "@dobuki/webrtc-client"
+import { displayUsers } from "napl";
+
+const url = new URL(location.href);
+const room = url.searchParams.get("room") ?? "sample";
+const host = url.searchParams.get("host") ?? undefined;
+const connector = new Connector({
+  kvStore: firebaseWrappedServer("https://firebase.dobuki.net"),
+  room,
+  host,
+});
+
+const data = {
+  config: {
+    activeUpdates: true,
+  },
+};
+const syncClient = connector.createSyncClient(data);
+
+const button = document.body.appendChild(document.createElement("button"));
+button.textContent = "Click";
+button.addEventListener("click", () => {
+  syncClient.setData("test", Date.now(), {
+    active: true,
+  });
+});
+
+displayUsers(syncClient);
 
 const div = document.body.appendChild(document.createElement("div"));
+div.style.whiteSpace = "pre";
+syncClient.observe(`test`).onChange((value) => {
+  div.textContent = value;
+});
 
+if (!host) {
+  connector.getQRCode().then(({code, url}) => {
+    const qr = document.querySelector<HTMLImageElement>("#qr-code");
+    if (qr) {
+      qr.src = code;
+      qr.style.display = "";
+    }
+    const link = document.querySelector<HTMLLinkElement>("#qr-link");
+    if (link) {
+      link.href = url;
+    }
+  });  
+  (window as any).connector = connector;  
+}
 
-//  HelloComponent
-const root = createRoot(div);
-root.render(location.search.indexOf("strict-mode") >= 0 ?
-  <StrictMode>
-    <>{Hello.hello()}</>
-  </StrictMode> : <>{Hello.hello()}</>
-);
+addEventListener("unload", () => {
+  connector.destroy();
+});
 
-//  Hello
-;
-
-
-export {Hello};
+(window as any).data = data;
