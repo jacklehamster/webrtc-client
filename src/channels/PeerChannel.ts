@@ -142,26 +142,30 @@ export class PeerChannel {
   }
 
   private setupDataChannel(dataChannel: RTCDataChannel, peer: string) {
-    dataChannel.addEventListener("open", () => {
-      dataChannel.send(JSON.stringify({ hello: "Hello from " + this.connector.uid }));
-      this.connector.onNewClient.forEach(callback => callback(peer));
-    });
-    dataChannel.addEventListener("message", (event) => {
+    const onError = (error: any) => {
+      console.error("Data channel error:", error);
+      this.connector.onError.forEach(callback => callback(error));
+    }
+    const onMessage = (event: MessageEvent) => {
       const data = event.data instanceof ArrayBuffer ? new Blob([event.data]) : event.data;
       this.connector.receiveData(data);
+    };
+
+    dataChannel.addEventListener("open", () => {
+      dataChannel.send(JSON.stringify({ hello: `Hello from ${this.connector.uid}` }));
+      this.connector.onNewClient.forEach(callback => callback(peer));
     });
+    dataChannel.addEventListener("message", onMessage);
     dataChannel.addEventListener("closing", () => {
       console.log("Data channel closing");
+      this.dataChannel?.removeEventListener("error", onError);
       this.dataChannel = undefined;
     });
     dataChannel.addEventListener("close", () => {
       console.log("Data channel closed");
       this.connector.onClosePeer.forEach(callback => callback(peer));
     });
-    dataChannel.addEventListener("error", error => {
-      console.error("Data channel error:", error);
-      this.connector.onError.forEach(callback => callback(error));
-    });
+    dataChannel.addEventListener("error", onError);
   }
 
   destroy() {

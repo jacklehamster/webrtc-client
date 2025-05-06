@@ -3,8 +3,7 @@
 /// <reference lib="dom.iterable" />
 
 import { firebaseWrappedServer } from "@dobuki/firebase-store";
-import { Connector } from "@dobuki/webrtc-client"
-import { displayUsers } from "napl";
+import { Connector } from "@dobuki/webrtc-client";
 
 const url = new URL(location.href);
 const room = url.searchParams.get("room") ?? "sample";
@@ -15,26 +14,16 @@ const connector = new Connector({
   host,
 });
 
-const data = {
-  config: {
-    activeUpdates: true,
-  },
-};
-const syncClient = connector.createSyncClient(data);
+const data = {};
+const {processor, setData} = connector.createProcessor(data);
 
 const button = document.body.appendChild(document.createElement("button"));
 button.textContent = "Click";
-button.addEventListener("click", () => {
-  syncClient.setData("test", Date.now(), {
-    active: true,
-  });
-});
-
-displayUsers(syncClient);
+button.addEventListener("click", () =>   setData("test", Date.now()));
 
 const div = document.body.appendChild(document.createElement("div"));
 div.style.whiteSpace = "pre";
-syncClient.observe(`test`).onChange((value) => {
+processor.observe(`test`).onChange((value) => {
   div.textContent = value;
 });
 
