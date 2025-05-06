@@ -7295,7 +7295,7 @@ function createSyncClient(connector, root = {}) {
         myClientId: peer,
         updates
       });
-      connector.sendData(welcomeBlobBuilder.build());
+      connector.sendData(welcomeBlobBuilder.build(), peer);
     });
     connector.addCloseListener((peer) => {
       syncClient.setData(`clients/${peer}`, undefined, {
@@ -7415,9 +7415,6 @@ class Connector {
       if (peer?.length) {
         await this.acceptOffer(peer, offer);
       }
-      this.onNewClient.forEach((callback) => {
-        callback(peer);
-      });
     });
   }
   sendData(blob, peer) {

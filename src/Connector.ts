@@ -109,9 +109,6 @@ export class Connector {
       if (peer?.length) {
         await this.acceptOffer(peer, offer);
       }
-      this.onNewClient.forEach(callback => {
-        callback(peer);
-      });
     });
   }
 

@@ -20,7 +20,7 @@ export function createSyncClient(connector: Connector, root: Record<string, any>
         myClientId: peer,
         updates,
       });
-      connector.sendData(welcomeBlobBuilder.build());
+      connector.sendData(welcomeBlobBuilder.build(), peer);
     });
     connector.addCloseListener(peer => {
       syncClient.setData(`clients/${peer}`, undefined, {
