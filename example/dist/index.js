@@ -3150,6 +3150,13 @@ function firebaseWrappedServer(url) {
       const response = await fetch(`${url}?cleanup=1`);
       const json = await response.json();
       return json;
+    },
+    checkBeaconFailures() {
+      const failure = localStorage.getItem("beaconFailure");
+      if (failure) {
+        console.warn(failure);
+        localStorage.removeItem("beaconFailure");
+      }
     }
   };
 }
@@ -5566,7 +5573,7 @@ class Connector {
     this.uid = uid;
     this.room = room;
     this.maxUsers = maxUsers;
-    this.checkBeaconFailures();
+    this.kvStore.checkBeaconFailures();
     if (host) {
       this.makeOffer(host);
     } else {
@@ -5633,13 +5640,6 @@ class Connector {
       this.channels.get(peer)?.sendData(blob);
     }
   }
-  checkBeaconFailures() {
-    const failure = localStorage.getItem("beaconFailure");
-    if (failure) {
-      console.warn(failure);
-      localStorage.removeItem("beaconFailure");
-    }
-  }
   async getQRCode() {
     const { code, url } = await new Promise((resolve, reject) => {
       const url2 = this.makeUrl();
@@ -5665,9 +5665,7 @@ class Connector {
       processor.performCycle(context);
     });
     this.addOnNewClient((peer) => {
-      Object.entries(root).forEach(([key, value]) => {
-        setDataCall(key, value, peer);
-      });
+      Object.entries(root).forEach(([key, value]) => setDataCall(key, value, peer));
       processor.performCycle(context);
     });
     const setDataCall = (path, value, peer) => {
@@ -5679,7 +5677,6 @@ class Connector {
     };
     return {
       processor,
-      context,
       setData: setDataCall
     };
   }
@@ -5698,12 +5695,10 @@ var connector = new Connector({
   host
 });
 var data = {};
-var { processor, context, setData: setData2 } = connector.createProcessor(data);
+var { processor, setData: setData2 } = connector.createProcessor(data);
 var button = document.body.appendChild(document.createElement("button"));
 button.textContent = "Click";
-button.addEventListener("click", () => {
-  setData2("test", Date.now());
-});
+button.addEventListener("click", () => setData2("test", Date.now()));
 var div = document.body.appendChild(document.createElement("div"));
 div.style.whiteSpace = "pre";
 processor.observe(`test`).onChange((value) => {
