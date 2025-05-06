@@ -40,7 +40,7 @@ export class Connector {
     this.room = room;
     this.maxUsers = maxUsers;
 
-    this.checkBeaconFailures();
+    this.kvStore.checkBeaconFailures();
     if (host) {
       this.makeOffer(host);
     } else {
@@ -116,14 +116,6 @@ export class Connector {
       this.channels.keys().forEach(peer => this.sendData(blob, peer));
     } else {
       this.channels.get(peer)?.sendData(blob);
-    }
-  }
-
-  checkBeaconFailures() {
-    const failure = localStorage.getItem("beaconFailure");
-    if (failure) {
-      console.warn(failure);
-      localStorage.removeItem("beaconFailure");
     }
   }
 

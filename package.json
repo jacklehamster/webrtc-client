@@ -39,7 +39,7 @@
     "@types/qrcode": "^1.5.5"
   },
   "dependencies": {
-    "@dobuki/firebase-store": "^1.0.16",
+    "@dobuki/firebase-store": "^1.0.17",
     "napl": "^1.0.77",
     "qrcode": "^1.5.4"
   }
