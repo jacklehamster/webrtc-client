@@ -5699,10 +5699,24 @@ var { processor, setData: setData2 } = connector.createProcessor(data);
 var button = document.body.appendChild(document.createElement("button"));
 button.textContent = "Click";
 button.addEventListener("click", () => setData2("test", Date.now()));
+document.addEventListener("mousemove", (e) => {
+  setData2(`mouse`, {
+    x: e.pageX,
+    y: e.pageY
+  });
+});
 var div = document.body.appendChild(document.createElement("div"));
 div.style.whiteSpace = "pre";
 processor.observe(`test`).onChange((value) => {
   div.textContent = value;
+});
+var mouseDiv = document.body.appendChild(document.createElement("div"));
+mouseDiv.textContent = "\uD83D\uDC01";
+mouseDiv.style.position = "absolute";
+mouseDiv.style.pointerEvents = "none";
+processor.observe("mouse").onChange((value) => {
+  mouseDiv.style.left = `${value.x}px`;
+  mouseDiv.style.top = `${value.y}px`;
 });
 if (!host) {
   connector.getQRCode().then(({ code, url: url2 }) => {

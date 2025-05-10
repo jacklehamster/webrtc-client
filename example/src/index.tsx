@@ -19,12 +19,28 @@ const {processor, setData} = connector.createProcessor(data);
 
 const button = document.body.appendChild(document.createElement("button"));
 button.textContent = "Click";
-button.addEventListener("click", () =>   setData("test", Date.now()));
+button.addEventListener("click", () => setData("test", Date.now()));
+
+document.addEventListener("mousemove", (e) => {
+  setData(`mouse`, {
+    x: e.pageX,
+    y: e.pageY,
+  })
+});
 
 const div = document.body.appendChild(document.createElement("div"));
 div.style.whiteSpace = "pre";
 processor.observe(`test`).onChange((value) => {
   div.textContent = value;
+});
+
+const mouseDiv = document.body.appendChild(document.createElement("div"));
+mouseDiv.textContent = '🐁';
+mouseDiv.style.position = "absolute";
+mouseDiv.style.pointerEvents = "none";
+processor.observe('mouse').onChange((value) => {
+  mouseDiv.style.left = `${value.x}px`;
+  mouseDiv.style.top = `${value.y}px`;
 });
 
 if (!host) {
