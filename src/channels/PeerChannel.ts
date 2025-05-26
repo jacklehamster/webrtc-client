@@ -27,24 +27,24 @@ export class PeerChannel {
     });
   }
 
-  async setKey(key: string, value: any) {
+  async #setKey(key: string, value: any) {
     this.keysSet.add(key);
     this.kvStore.setKeyValue(key, value);
   }
 
-  deleteKey(key: string) {
+  #deleteKey(key: string) {
     this.keysSet.delete(key);
     this.kvStore.deleteKey(key);
   }
 
-  async handleIceCandidates(peer: string) {
+  async #handleIceCandidates(peer: string) {
     const iceCandidates: RTCIceCandidate[] = [];
     this.connection.addEventListener("icecandidate", async (event) => {
       if (event.candidate) {
         iceCandidates.push(event.candidate);
       } else {
         //  ice candidate gathering is done
-        await this.setKey(`${this.room}_${peer}_ice_from_${this.connector.uid}`, iceCandidates);
+        await this.#setKey(`${this.room}_${peer}_ice_from_${this.connector.uid}`, iceCandidates);
       }
     });
 
@@ -55,16 +55,16 @@ export class PeerChannel {
     });
   }
 
-  async receiveIceCandidates(peer: string) {
+  async #receiveIceCandidates(peer: string) {
     const key: string = `${this.room}_${this.connector.uid}_ice_from_${peer}`;
     const candidates = await waitForKey(key, this.kvStore);
-    this.deleteKey(key);
+    this.#deleteKey(key);
     await this.addIceCandidates(candidates);
   }
 
   async makeOffer(peer: string) {
     //  handle ice candidates
-    this.handleIceCandidates(peer);
+    this.#handleIceCandidates(peer);
 
     //  #1 - Create data channel
     this.dataChannel = this.connection.createDataChannel(DATA_CHANNEL_LABEL);
@@ -72,21 +72,21 @@ export class PeerChannel {
 
     //  #2 - guest enters a room and make offer
     const offer = await this.createOffer();
-    this.setKey(`${this.room}_${peer}_offer_from_${this.connector.uid}`, offer);
+    this.#setKey(`${this.room}_${peer}_offer_from_${this.connector.uid}`, offer);
 
     //  ...
 
     //  #5 guest receives answer
     const answerKey = `${this.room}_${this.connector.uid}_answer_from_${peer}`;
     const answer = await waitForKey(answerKey, this.kvStore);
-    this.deleteKey(answerKey);
+    this.#deleteKey(answerKey);
     await this.connection.setRemoteDescription(new RTCSessionDescription(answer));
 
     //  Receive ice candidates
-    this.receiveIceCandidates(peer);
+    this.#receiveIceCandidates(peer);
   }
 
-  get room() {
+  private get room() {
     return this.connector.room;
   }
 
@@ -98,21 +98,21 @@ export class PeerChannel {
     });
 
     //  handle ice candidates
-    this.handleIceCandidates(peer);
+    this.#handleIceCandidates(peer);
 
     //  #3 - host accept offer
     const offerKey = `${this.room}_${this.connector.uid}_offer_from_${peer}`;
     const offer = offerPassed ?? await this.kvStore.getValue(offerKey);
-    this.deleteKey(offerKey);
+    this.#deleteKey(offerKey);
     await this.connection.setRemoteDescription(new RTCSessionDescription(offer));
 
     //  Receive ice candidates
-    this.receiveIceCandidates(peer);
+    this.#receiveIceCandidates(peer);
 
     //  #4 - provide answer
     const answer = await this.connection.createAnswer();
     await this.connection.setLocalDescription(answer);
-    await this.setKey(`${this.room}_${peer}_answer_from_${this.connector.uid}`, answer);
+    await this.#setKey(`${this.room}_${peer}_answer_from_${this.connector.uid}`, answer);
   }
 
   private async createOffer() {
@@ -132,7 +132,7 @@ export class PeerChannel {
   sendData(blob: Blob) {
     if (this.dataChannel?.readyState === "open") {
       try {
-        this.dataChannel?.send(blob);
+        this.dataChannel.send(blob);
       } catch (error) {
         this.connector.onError.forEach(callback => callback(error));
       }
@@ -171,6 +171,6 @@ export class PeerChannel {
   destroy() {
     this.dataChannel?.close();
     this.connection.close();
-    this.keysSet.forEach(key => this.deleteKey(key));
+    this.keysSet.forEach(key => this.#deleteKey(key));
   }
 }
