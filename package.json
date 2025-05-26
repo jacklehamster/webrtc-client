@@ -40,7 +40,7 @@
   },
   "dependencies": {
     "@dobuki/firebase-store": "^1.0.17",
-    "napl": "^1.0.77",
+    "napl": "^1.0.82",
     "qrcode": "^1.5.4"
   }
 }

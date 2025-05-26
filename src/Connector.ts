@@ -1,7 +1,7 @@
 import { KeyValueStore } from "@dobuki/firebase-store";
 import QRCode from "qrcode";
 import { PeerChannel } from "./channels/PeerChannel";
-import { Context, Data, Processor, setData } from "napl";
+import { CommInterface, createProcessor, Data } from "napl";
 
 export interface Config {
   uid?: string;
@@ -133,33 +133,26 @@ export class Connector {
     return { code, url };
   }
 
-  createProcessor(root: Data = {}, properties: Record<string, any> = {}) {
-    const context: Context = {
-      root,
-      outgoingUpdates: [],
-      properties,
+  createProcessor(
+    root: Data = {},
+    properties: Record<string, any> = {}
+  ) {
+    const self = this;
+    const com: CommInterface = {
+      send: function (data: Blob, peer?: string): void {
+        self.sendData(data, peer);
+      },
+      onMessage: function (listener: (data: any) => void): void {
+        self.addDataListener(listener);
+      },
+      onNewClient: function (listener: (peer: string) => void): void {
+        self.addOnNewClient(listener);
+      },
+      close: function (): void {
+        self.destroy();
+      }
     };
-    const processor = new Processor((blob, peer) => this.sendData(blob, peer));
-    this.addDataListener(async (blob) => {
-      await processor.receivedBlob(blob, context);
-      processor.performCycle(context);
-    });
-    this.addOnNewClient(peer => {
-      Object.entries(root).forEach(([key, value]) => setDataCall(key, value, peer));
-      processor.performCycle(context);
-    });
-
-    const setDataCall = (path: string, value: any, peer?: string) => {
-      setData(root, Date.now(), context.outgoingUpdates, path, value, {
-        active: true,
-        peer,
-      });
-      processor.performCycle(context);
-    };
-
-    return {
-      processor, setData: setDataCall,
-    };
+    return createProcessor(com, root, properties);
   }
 
   destroy() {

@@ -3325,7 +3325,7 @@ class PeerChannel {
   }
 }
 
-// ../../NAPL/src/cycles/data-update/data-update.ts
+// ../node_modules/napl/dist/index.js
 var KEYS = "~{keys}";
 var VALUES = "~{values}";
 var REGEX = /~\{([^}]+)\}/;
@@ -3445,7 +3445,6 @@ function markUpdateConfirmed(update, now) {
     update.confirmed = now;
   }
 }
-// ../../NAPL/node_modules/@dobuki/data-blob/dist/index.js
 var Yn = Object.create;
 var { defineProperty: Rt, getPrototypeOf: En, getOwnPropertyNames: In } = Object;
 var Nn = Object.prototype.hasOwnProperty;
@@ -5059,8 +5058,6 @@ function un(n, t) {
     });
   return n;
 }
-
-// ../../NAPL/src/cycles/data-update/blob-utils.ts
 function packageUpdates(updates, blobs, secret) {
   const blobBuilder = kt.payload("payload", { updates }, secret);
   const addedBlob = new Set;
@@ -5077,7 +5074,6 @@ async function receiveBlob(blob) {
   return { payload, blobs };
 }
 
-// ../../NAPL/src/observer/Observer.ts
 class Observer {
   paths;
   observerManagger;
@@ -5172,7 +5168,6 @@ class Observer {
   }
 }
 
-// ../../NAPL/src/observer/ObserverManager.ts
 class ObserverManager {
   #observers = new Set;
   observe(paths, multi) {
@@ -5191,7 +5186,6 @@ class ObserverManager {
   }
 }
 
-// ../../NAPL/src/core/Processor.ts
 class Processor {
   sendUpdate;
   #observerManager = new ObserverManager;
@@ -5222,9 +5216,7 @@ class Processor {
       const confirmedUpdates = context.outgoingUpdates.filter(({ confirmed }) => confirmed).map((update) => ({ ...update }));
       this.#addIncomingUpdates(confirmedUpdates, context);
       const peerSet = new Set;
-      context.outgoingUpdates.forEach((update) => {
-        peerSet.add(update.peer);
-      });
+      context.outgoingUpdates.forEach((update) => peerSet.add(update.peer));
       peerSet.forEach((peer) => {
         const outgoingUpdates = context.outgoingUpdates.filter((update) => update.peer === peer);
         const blobs = {};
@@ -5260,7 +5252,6 @@ class Processor {
     })).join("/");
   }
 }
-// ../../NAPL/src/cycles/data-update/data-manager.ts
 function getData(root, path = "", properties) {
   const parts = path.split("/");
   return getLeafObject(root, parts, 0, false, properties);
@@ -5287,7 +5278,7 @@ function processDataUpdate(root, now, outgoingUpdates, update, options = {}) {
   }
   outgoingUpdates.push(update);
 }
-// ../../NAPL/src/clients/ClientData.ts
+
 class ClientData {
   syncClient;
   clientId = "";
@@ -5317,7 +5308,6 @@ class ClientData {
   }
 }
 
-// ../../NAPL/src/clients/SubData.ts
 class SubData {
   path;
   syncClient;
@@ -5364,8 +5354,6 @@ class SubData {
     this.syncClient.removeChildData(this.path);
   }
 }
-
-// ../../NAPL/src/utils/execution-utils.ts
 var nextFrameInProgress = new Set;
 function prepareNextFrame(callback, ...params) {
   if (nextFrameInProgress.has(callback)) {
@@ -5382,7 +5370,6 @@ function executeFrame(callback, ...params) {
   callback(...params);
 }
 
-// ../../NAPL/src/clients/SyncClient.ts
 class SyncClient {
   commProvider;
   state;
@@ -5390,12 +5377,12 @@ class SyncClient {
   #comm;
   #connectionPromise;
   #selfData = new ClientData(this);
-  #processor = new Processor((blob) => {
+  #processor = new Processor((blob, peer) => {
     if (blob.size > 1024 * 1024 * 10) {
       console.error(`Blob too large: ${blob.size / 1024 / 1024} MB`);
       return;
     }
-    this.#comm?.send(blob);
+    this.#comm?.send(blob, peer);
   });
   outgoingUpdates = [];
   #closeListener = () => {};
@@ -5480,7 +5467,7 @@ class SyncClient {
   async#connect() {
     const comm = this.#comm = this.commProvider();
     return this.#connectionPromise = new Promise((resolve, reject) => {
-      comm.onError((event) => {
+      comm.onError?.((event) => {
         console.error("SyncClient connection error", event);
         reject(event);
       });
@@ -5491,7 +5478,7 @@ class SyncClient {
           resolve();
         }
       });
-      comm.onClose(() => {
+      comm.onClose?.(() => {
         this.#comm = undefined;
         this.#closeListener();
         this.setData(`/clients/${this.clientId}`, undefined, {
@@ -5502,7 +5489,7 @@ class SyncClient {
     });
   }
   close() {
-    this.#comm?.close();
+    this.#comm?.close?.();
   }
   async onMessageBlob(blob) {
     const context = {
@@ -5542,6 +5529,35 @@ class SyncClient {
     }
   }
 }
+function createProcessor(com, root = {}, properties = {}) {
+  const context = {
+    root,
+    outgoingUpdates: [],
+    properties
+  };
+  const processor = new Processor((blob, peer) => com.send(blob, peer));
+  com.onMessage(async (blob) => {
+    await processor.receivedBlob(blob, context);
+    processor.performCycle(context);
+  });
+  com.onNewClient((peer) => {
+    Object.entries(root).forEach(([key, value]) => setDataCall(key, value, peer));
+    processor.performCycle(context);
+  });
+  const setDataCall = (path, value, peer) => {
+    setData(root, Date.now(), context.outgoingUpdates, path, value, {
+      active: true,
+      peer
+    });
+    processor.performCycle(context);
+  };
+  return {
+    observe: (path) => processor.observe(path),
+    setData: setDataCall,
+    close: () => com.close()
+  };
+}
+
 // ../src/Connector.ts
 class Connector {
   uid;
@@ -5654,31 +5670,22 @@ class Connector {
     return { code, url };
   }
   createProcessor(root = {}, properties = {}) {
-    const context = {
-      root,
-      outgoingUpdates: [],
-      properties
+    const self = this;
+    const com = {
+      send: function(data, peer) {
+        self.sendData(data, peer);
+      },
+      onMessage: function(listener) {
+        self.addDataListener(listener);
+      },
+      onNewClient: function(listener) {
+        self.addOnNewClient(listener);
+      },
+      close: function() {
+        self.destroy();
+      }
     };
-    const processor = new Processor((blob, peer) => this.sendData(blob, peer));
-    this.addDataListener(async (blob) => {
-      await processor.receivedBlob(blob, context);
-      processor.performCycle(context);
-    });
-    this.addOnNewClient((peer) => {
-      Object.entries(root).forEach(([key, value]) => setDataCall(key, value, peer));
-      processor.performCycle(context);
-    });
-    const setDataCall = (path, value, peer) => {
-      setData(root, Date.now(), context.outgoingUpdates, path, value, {
-        active: true,
-        peer
-      });
-      processor.performCycle(context);
-    };
-    return {
-      processor,
-      setData: setDataCall
-    };
+    return createProcessor(com, root, properties);
   }
   destroy() {
     this.channels.forEach((channel) => channel.destroy());
@@ -5695,7 +5702,7 @@ var connector = new Connector({
   host
 });
 var data = {};
-var { processor, setData: setData2 } = connector.createProcessor(data);
+var { observe, setData: setData2 } = connector.createProcessor(data);
 var button = document.body.appendChild(document.createElement("button"));
 button.textContent = "Click";
 button.addEventListener("click", () => setData2("test", Date.now()));
@@ -5707,14 +5714,14 @@ document.addEventListener("mousemove", (e) => {
 });
 var div = document.body.appendChild(document.createElement("div"));
 div.style.whiteSpace = "pre";
-processor.observe(`test`).onChange((value) => {
+observe(`test`).onChange((value) => {
   div.textContent = value;
 });
 var mouseDiv = document.body.appendChild(document.createElement("div"));
 mouseDiv.textContent = "\uD83D\uDC01";
 mouseDiv.style.position = "absolute";
 mouseDiv.style.pointerEvents = "none";
-processor.observe("mouse").onChange((value) => {
+observe("mouse").onChange((value) => {
   mouseDiv.style.left = `${value.x}px`;
   mouseDiv.style.top = `${value.y}px`;
 });
