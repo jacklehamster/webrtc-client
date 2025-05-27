@@ -2,7 +2,7 @@
   "name": "@dobuki/webrtc-client",
   "module": "src/index.ts",
   "description": "Wrapper for connecting WebRTC clients.",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "keywords": [],
   "repository": {
     "type": "git",
