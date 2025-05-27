@@ -2,14 +2,13 @@
 /// <reference lib="dom" />
 /// <reference lib="dom.iterable" />
 
-import { firebaseWrappedServer } from "@dobuki/firebase-store";
 import { Connector } from "@dobuki/webrtc-client";
 
 const url = new URL(location.href);
 const room = url.searchParams.get("room") ?? "sample";
 const host = url.searchParams.get("host") ?? undefined;
 const connector = new Connector({
-  kvStore: firebaseWrappedServer("https://firebase.dobuki.net"),
+  firebaseServer: "https://firebase.dobuki.net",
   room,
   host,
 });

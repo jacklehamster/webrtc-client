@@ -1,4 +1,4 @@
-import { KeyValueStore } from "@dobuki/firebase-store";
+import { firebaseWrappedServer, KeyValueStore } from "@dobuki/firebase-store";
 import QRCode from "qrcode";
 import { PeerChannel } from "./channels/PeerChannel";
 import { CommInterface, createProcessor, Data } from "napl";
@@ -6,7 +6,8 @@ import { CommInterface, createProcessor, Data } from "napl";
 export interface Config {
   uid?: string;
   makeUrl?: () => string;
-  kvStore: KeyValueStore;
+  firebaseServer?: string;
+  kvStore?: KeyValueStore;
   room: string;
   host?: string;
   maxUsers?: number;
@@ -31,10 +32,10 @@ export class Connector {
       url.searchParams.set("room", this.room);
       url.searchParams.set("host", this.uid);
       return url.toString();
-    }, kvStore, room, host,
+    }, kvStore, firebaseServer, room, host,
     maxUsers = Number.MAX_SAFE_INTEGER,
   }: Config) {
-    this.kvStore = kvStore;
+    this.kvStore = kvStore ?? firebaseWrappedServer(firebaseServer ?? "");
     this.makeUrl = makeUrl;
     this.uid = uid;
     this.room = room;

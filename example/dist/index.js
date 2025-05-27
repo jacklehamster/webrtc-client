@@ -5257,14 +5257,14 @@ function getData(root, path = "", properties) {
   return getLeafObject(root, parts, 0, false, properties);
 }
 function pushData(root, now, outgoingUpdates, path, value, options = {}) {
-  processDataUpdate(root, now, outgoingUpdates, {
+  return processDataUpdate(root, now, outgoingUpdates, {
     path,
     value,
     append: true
   }, options);
 }
 function setData(root, now, outgoingUpdates, path, value, options = {}) {
-  processDataUpdate(root, now, outgoingUpdates, {
+  return processDataUpdate(root, now, outgoingUpdates, {
     path,
     value,
     append: options.append,
@@ -5277,6 +5277,7 @@ function processDataUpdate(root, now, outgoingUpdates, update, options = {}) {
     markUpdateConfirmed(update, now);
   }
   outgoingUpdates.push(update);
+  return update;
 }
 
 class ClientData {
@@ -5538,23 +5539,56 @@ function createProcessor(com, root = {}, properties = {}) {
   const processor = new Processor((blob, peer) => com.send(blob, peer));
   com.onMessage(async (blob) => {
     await processor.receivedBlob(blob, context);
-    processor.performCycle(context);
+    prepareCycle();
   });
   com.onNewClient((peer) => {
     Object.entries(root).forEach(([key, value]) => setDataCall(key, value, peer));
-    processor.performCycle(context);
+    prepareCycle();
   });
   const setDataCall = (path, value, peer) => {
     setData(root, Date.now(), context.outgoingUpdates, path, value, {
       active: true,
       peer
     });
-    processor.performCycle(context);
   };
+  let looping = false;
+  let preparingCycle = false;
+  let animationFrame = 0;
+  function prepareCycle() {
+    if (!preparingCycle) {
+      preparingCycle = true;
+      const loop = () => {
+        if (looping) {
+          animationFrame = requestAnimationFrame(loop);
+        } else {
+          preparingCycle = false;
+        }
+        processor.performCycle(context);
+      };
+      animationFrame = requestAnimationFrame(loop);
+    }
+  }
   return {
-    observe: (path) => processor.observe(path),
-    setData: setDataCall,
-    close: () => com.close()
+    processor,
+    observe: (path) => {
+      return processor.observe(path);
+    },
+    setData: (path, value, peer) => {
+      setDataCall(path, value, peer);
+      prepareCycle();
+    },
+    close: () => {
+      com.close();
+    },
+    startLoop() {
+      looping = true;
+      prepareCycle();
+    },
+    stopLoop() {
+      cancelAnimationFrame(animationFrame);
+      looping = false;
+      preparingCycle = false;
+    }
   };
 }
 
@@ -5580,11 +5614,12 @@ class Connector {
       return url.toString();
     },
     kvStore,
+    firebaseServer,
     room,
     host,
     maxUsers = Number.MAX_SAFE_INTEGER
   }) {
-    this.kvStore = kvStore;
+    this.kvStore = kvStore ?? firebaseWrappedServer(firebaseServer ?? "");
     this.makeUrl = makeUrl;
     this.uid = uid;
     this.room = room;
@@ -5697,7 +5732,7 @@ var url = new URL(location.href);
 var room = url.searchParams.get("room") ?? "sample";
 var host = url.searchParams.get("host") ?? undefined;
 var connector = new Connector({
-  kvStore: firebaseWrappedServer("https://firebase.dobuki.net"),
+  firebaseServer: "https://firebase.dobuki.net",
   room,
   host
 });
